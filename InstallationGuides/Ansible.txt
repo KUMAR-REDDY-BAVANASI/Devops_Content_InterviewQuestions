@@ -1,38 +1,305 @@
- apt-get install software-properties-common
- apt-add-repository ppa:ansible/ansible
- apt-get update
- apt-get install ansible
+Ansible Simple Ad-hoc Commands
+==============================
+Rebooting == ansible all -a "/sbin/reboot"
+Copy file == ansible all -m copy -a "src=/home/dan dest=/tmp/home"
+Create user == ansible all -m user -a "name=testuser password=<encrypted password>"
+Remove user == ansible all -m user -a "name=testuser state=absent"
+Change file permission == ansible all -m file -a "dest=/home/dan/file1.txt mode=777"
+Install package == ansible all -m yum -a "name=httpd state=latest"
+Start a service == ansible all -m service -a "name=httpd state=started"
+Stop a service == ansible all -m service -a "name=httpd state=stopped"
 
 
-ssh-keygen -t rsa
 
-Change the sshd_config
+1. Create a new user for ansible administration & grant admin access to user(Master and Slave)
+    # useradd ansadmin
+    # passwd ansadmin
 
-PermitRootLogin yes
+2. Enable user login on all EC2 instances. (Master & Slave)
+    # vi /etc/ssh/sshd_config
+    (bydefault it is "#" you remove it) 
+    PasswordAuthentication yes
 
-service sshd restart
+3. Login as a ansadmin user on master and generate ssh key(Master)
+    # ssh-keygen
+
+4. Copy keys to target servers(Master)
+    # .ssh/id_rsa.pub  Copy Id to <target-server>
+
+5. Update target servers information on /etc/ansible/hosts
+    # echo "10.10.x.x" >/etc/ansible/hosts
+
+Testing
+========
+run ansible command as a ansadmin user it should be successful(Master)
+  # ansible all -m ping 
 
 
-ansible -m ping servers
 
-ansible -m ping all
+Basic Terminologies:
+====================
+Controller Machine: It is the main controller machine, which manages all the host
+Playbook: 	    An YAML script, which contains the tasks
+Task: 	            Task is the single piece of work like install http
+Inventory:          The server can be group together know as inventory
+Module: 	    It is an executable set of tasks.
+Role: 		    An Ansible role is a pre-configured way forgetting organize the playbooks
 
-ansible -m ping host1
+
+Inventory
+=============
+A list of hosts or group of hosts or target server ips
+The default location for the host inventory file is /etc/ansible/hosts (Static Inventory)
+
+The ansible commands will use  a different host inventory file when they are used with the
+--inventory PATHNAME option , -i PATHNAME for short
 
 
-ansible -m shell -a 'free -m' host1
+Ansible Dynamic Inventory
+============================
+Pre-requisites:
+---------------
+Ansible Server
 
-host1 ansible_ssh_host=192.0.2.1
+Setup
+------
+To get help on dynamic inventory please follow Ansible Official Document
+
+1.  Download ec2.py and ec2.ini files
+
+  https://github.com/ansible/ansible/blob/stable-2.9/contrib/inventory/ec2.ini 
+  https://github.com/ansible/ansible/blob/stable-2.9/contrib/inventory/ec2.py
 
 
-#cloud-config
-repo_update: true
-repo_upgrade: all
+2. Create IAM Programmatic access user with EC2 full access on AWS console
+   -----------------------------------------------------------------------
 
-packages
-- python
+  IAM --> users --> Add user
 
-runcmd:
-- [ sh, -c, "sed -i 's|prohibit-password|yes|g' /etc/ssh/sshd_config" ]
-- [ sh, -c, "apt-get -y install python" ]
-- [ sh, -c, 'echo "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC1zeRiU+Zp5/eqLu8czbUKGq4UDT3Nkm4vufjEQBlQ55DumdT5CIVmwg3UFUkGWbfU+veM9j0NvPZVtefEGy6SHBnewkJfWD9K92g8V1i3f1SBsxl5k0QHoIcie/spRwWWS2a+CXP4WALCQ25KTySr3Rz3DvC/XbmoA8l5nEdgJoBY6DBHSb62RA3Ij56FAIOWN5W5pPFCzqnelYsFG3oYs46s2OroxWoKYRn3qmVDCzL2RwxQeuA7oI2afQZEWiMcNlytEibT3KvvTwZ9OcP7aX48waOPnjj3HbW6xNWHTaqTWU4H5yN7AWuA86K3G39iqBIr/rdRn/5BBohzmJjj" >> /root/.ssh/authorized_keys' ]
+  Role --> Ec2FullAccess --> Attach to Ansibe Server
+
+3. Export IAM user credentials on Ansible server.
+
+  export AWS_ACCESS_KEY_ID='1bc123'
+
+  export AWS_SECRET_ACCESS_KEY='abc123'
+
+4. add executing permissions to ec2.py script
+
+   chmod 755 ec2.py
+
+5. test the script
+ 
+  ./ec2.py --list
+
+6. List out servers which are running on ap-south-1a AZ
+
+   ansible -i ec2.py ap-south-1 --list-hosts
+
+
+
+Modules
+============
+Modules are the programs that perform the actual work of the tasks of a play
+
+Core modules are the modules that come bundled with Ansible, There are over 400 core modules
+
+Tasks
+=======
+The Goal of a play is to map a group of hosts to some well defined roles, 
+represented by things ansible calls tasks. At a basic level, a task is nothing more 
+than a call to an ansible module.
+
+
+Roles
+=======
+Roles are written as a collection which contains tasks, vars, default vars, metadata
+information, handlers, files all separated in different folder whereas in 
+playbook which contains all in a single file. 
+Roles can be shared with ansible galaxy so that others can easily pull it without
+any dependency
+
+
+Ansible-Playbooks
+===================
+Ansible Playbooks may contains
+         Hosts
+	 variables (optional)
+         Tasks
+Ansible playbooks are written using the YAML Ain't Markup Language (YAML) Language.
+So Create a file with .yaml or yaml extension
+ # vi nginx-install.yaml
+
+YAML files optionally begin with a three dash 
+---
+Next immediate line starts with single dash(-). Name is optional here 
+- name: <description>
+hosts expect value like all or group 
+  hosts: all
+Do you want to become a root on target server uses become 
+  become: true
+
+what action do you want to perform ? Specify under tasks
+  tasks: 
+We are using this playbook to install nginx.
+what is the module to install nginx?
+    yum: 
+      name: nginx
+      state: latest
+     
+    service:
+      name: nginx
+      start: started 
+
+
+
+Ansible-playbook  apache.yaml
+===============================
+---
+- name: apache install & start services
+  hosts: all
+  become: true
+
+  tasks:
+  - name: install apache
+    yum:
+      name: httpd 
+      state: latest
+  - name: start apache
+    service:
+      name: httpd
+      state: started
+
+
+Ansible Vault:
+================
+Ansible Vault is a feature of ansible that allows you to keep sensitive data such as 
+passwords or keys in encrypted files, rather than as plaintext in playbooks or roles.
+
+create: to create ansible vault file in the encrypted format
+view:   to view data of encrypted file 
+edit: 	to edit encrypted file
+encrypt: to encrypt an unencrypted file
+decrypt: to decrypt an encrypted file
+
+
+--ask-vault-pass:  to provide password while running playbook
+--vault-password-file:  to pass a vault password through a file.
+
+
+Creating Vault file:
+=======================
+[root@ip-172-31-10-104 ~]# ansible-vault create vault-pass.yaml
+New Vault password:
+Confirm New Vault password:
+
+This is kumar encrypted file
+
+Check the vault-pass.yaml
+-------------------------
+cat vault-pass.yaml
+
+View the vault-pass.yaml
+----------------------------
+[root@ip-172-31-10-104 ~]# ansible-vault view vault-pass.yaml
+Vault password:
+This is kumar encrypted file
+
+Edit the vault-pass.yaml
+----------------------------
+[root@ip-172-31-10-104 ~]# ansible-vault edit vault-pass.yaml
+Vault password:
+This is kumar encrypted file
+
+Decrypt the vault-pass.yaml
+----------------------------
+[root@ip-172-31-10-104 ~]# ansible-vault decrypt vault-pass.yaml
+Vault password:
+Decryption successful
+[root@ip-172-31-10-104 ~]# cat vault-pass.yaml
+This is kumar encrypted file
+
+Encrypt the vault-pass.yaml
+----------------------------
+[root@ip-172-31-10-104 ~]# ansible-vault encrypt vault-pass.yaml
+New Vault password:
+Confirm New Vault password:
+Encryption successful
+[root@ip-172-31-10-104 ~]# cat vault-pass.yaml
+$ANSIBLE_VAULT;1.1;AES256
+663263393033656339623738323437
+333530653564323532313232366338
+613864393731656330663164353637
+
+
+
+
+
+Some Playbooks to install apache nginx tomcat:
+==============================================
+ansible_tomcat.yaml:
+--------------------
+
+---
+- name: install tomcat server
+  hosts: all
+  become: true
+
+  tasks:
+  - name: install java
+    yum:
+      name: java
+      state: latest
+  - name: download tomcat server packages
+    get_url:
+      url: https://mirror.koddos.net/apache/tomcat/tomcat-8/v8.5.61/bin/apache-tomcat-8.5.61.tar.gz
+      dest: /usr/local
+  - name: extract tomcat packages
+    unarchive:
+      src: /usr/local/apache-tomcat-8.5.61.tar.gz
+      dest: /usr/local
+      remote_src: yes
+  - name: start tomcat services
+    shell: nohup /usr/local/apache-tomcat-8.5.61/bin/shutdown.sh
+
+
+ansible_apache.yaml:
+--------------------
+
+---
+- name: install apache server
+  hosts: all
+  become: yes
+
+  tasks:
+  - name: install apache is the latest version
+    yum:
+      name: httpd
+      state: latest
+  - name: start apache service
+    service:
+      name: httpd
+      state: stopped
+  - name: enable apache service
+    service:
+      name: httpd
+      enabled: True
+
+
+ansible_nginx.yaml: (ubuntu)
+--------------------
+---
+- hosts: nginx
+  tasks:
+    - name: install nginx is the latest version
+      apt:
+        name: nginx
+        state: latest
+    - name: start nginx service
+      service:
+        name: nginx
+        state: started
+    - name: enable apache service
+      service:
+        name: nginx
+        enabled: True

@@ -1,0 +1,86 @@
+EC2 == REdHAT LINUX
+=====================
+eksctl install
+================
+curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
+mv /tmp/eksctl /usr/local/bin
+eksctl version
+
+kubectl
+=========
+curl -LO "https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl"
+mv kubectl /usr/local/bin
+chmod 755 /usr/local/bin/kubectl
+
+aws-iam-authenticator
+======================
+curl -o aws-iam-authenticator https://amazon-eks.s3.us-west-2.amazonaws.com/1.18.8/2020-09-18/bin/linux/amd64/aws-iam-authenticator
+chmod 755 aws-iam-authenticator
+mv aws-iam-authenticator /usr/local/bin/
+
+aws-cli
+==========
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+yum install unzip
+unzip awscliv2.zip
+./aws/install
+
+
+
+ekscluster create
+=======================
+eksctl create cluster \
+--name stg \
+--version 1.18 \
+--nodegroup-name workers \
+--nodes 2 \
+--nodes-min 1 \
+--nodes-max 3 \
+--managed \
+--region=ap-south-1 \
+--vpc-private-subnets subnet-0dd6ef3d53ec780f0,subnet-0d1e4add17898c70d,subnet-0fa24c6b81103446f \
+--vpc-public-subnets subnet-09fd22241a7ebad76,subnet-08006cb5e3089f5e0,subnet-03d486416adc4f547
+
+
+
+Note:
+======
+aws eks --region ap-south-1 update-kubeconfig --name dev1
+
+It will generate the kubeconfig
+
+
+kubectl cordon nodename  ---> nodes will be disabled, didn't schedule the pods
+kubectl uncordon nodename
+
+kubectl describe pod podname -n namespacename ---> logs/info
+
+kubectl get po -n namespacename -o wide  ---> info
+
+kubectl drain nodename  ---> to drain safely
+
+kubectl get events
+
+
+
+
+
+
+
+aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 349948765351.dkr.ecr.ap-south-1.amazonaws.com
+docker build -t baseimage1 .
+docker tag baseimage1:latest 349948765351.dkr.ecr.ap-south-1.amazonaws.com/baseimage1:latest
+docker push 349948765351.dkr.ecr.ap-south-1.amazonaws.com/baseimage1:latest
+
+
+
+In Blue Green Deployment, you have TWO complete environments.
+
+One is Blue environment which is running and the Green environment to which you want to upgrade. Once you swap the environment from blue to green, the traffic is directed to your new green environment. You can delete or save your old blue environment for backup until the green environment is stable.
+
+In Rolling Deployment, you have only ONE complete environment.
+
+Once you start upgrading your environment. The code is deployed in the subset of instances of the same environment and moves to another subset after completion.
+
+So both are different in various factors and you need to choose the deployment model based on the scenario. Blue/green deployment is not a subset of rolling deployments.
+

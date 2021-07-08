@@ -1,0 +1,18 @@
+#CI
+#image
+#ecr login 
+aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 935733852032.dkr.ecr.ap-south-1.amazonaws.com
+#Image build
+docker build -t 935733852032.dkr.ecr.ap-south-1.amazonaws.com/static-k8:$BUILD_NUMBER .
+#ecr push
+docker push 935733852032.dkr.ecr.ap-south-1.amazonaws.com/static-k8:$BUILD_NUMBER
+
+
+#CD 
+#Bring the yaml file to the workspace
+cp /var/lib/jenkins/springboot/springboot-deployment.yaml .
+#Replace the image tag
+sed -i "s/springboot:[0-9.]*/springboot:$BUILD_NUMBER/g" springboot-deployment.yaml
+#deploy the application
+
+kubectl apply -f springboot-deployment.yaml

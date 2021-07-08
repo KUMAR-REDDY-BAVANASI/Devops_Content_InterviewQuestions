@@ -1,0 +1,70 @@
+ansible_tomcat.yaml:
+--------------------
+
+---
+- name: install tomcat server
+  hosts: all
+  become: true
+
+  tasks:
+  - name: install java
+    yum:
+      name: java
+      state: latest
+  - name: download tomcat server packages
+    get_url:
+      url: https://mirror.koddos.net/apache/tomcat/tomcat-8/v8.5.61/bin/apache-tomcat-8.5.61.tar.gz
+      dest: /usr/local
+  - name: extract tomcat packages
+    unarchive:
+      src: /usr/local/apache-tomcat-8.5.61.tar.gz
+      dest: /usr/local
+      remote_src: yes
+  - name: start tomcat services
+    shell: nohup /usr/local/apache-tomcat-8.5.61/bin/startup.sh
+
+
+ansible_apache.yaml:
+--------------------
+
+---
+- name: install apache server
+  hosts: all
+  become: yes
+
+  tasks:
+  - name: install apache is the latest version
+    yum:
+      name: httpd
+      state: latest
+  - name: start apache service
+    service:
+      name: httpd
+      state: stopped
+  - name: enable apache service
+    service:
+      name: httpd
+      enabled: True
+
+
+ansible_nginx.yaml: (ubuntu)
+--------------------
+---
+- hosts: nginx
+  tasks:
+    - name: install nginx is the latest version
+      apt:
+        name: nginx
+        state: latest
+    - name: start nginx service
+      service:
+        name: nginx
+        state: started
+    - name: enable apache service
+      service:
+        name: nginx
+        enabled: True
+
+
+
+
