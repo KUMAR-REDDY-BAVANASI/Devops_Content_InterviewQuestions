@@ -1,0 +1,22 @@
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tomcat-deployment
+  namespace: tomcat
+spec:
+  selector:
+    matchLabels:
+      app: tomcat-deployment
+  replicas: 2 
+  template:
+    metadata:
+      labels:
+        app: tomcat-deployment
+    spec:
+      containers:
+      - name: tomcat-deployment
+        image: 349948765351.dkr.ecr.ap-south-1.amazonaws.com/tomcat
+        ports:
+        - containerPort: 8080
+

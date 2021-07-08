@@ -1,0 +1,160 @@
+httpd-deployment.yaml:
+--------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: httpd-deployment
+  namespace: httpd
+spec:
+  selector:
+    matchLabels:
+      app: httpd-deployment
+  replicas: 2 
+  template:
+    metadata:
+      labels:
+        app: httpd-deployment
+    spec:
+      containers:
+      - name: httpd-deployment
+        image: 349948765351.dkr.ecr.ap-south-1.amazonaws.com/httpd
+        ports:
+        - containerPort: 80
+
+
+
+httpd-service.yaml
+-------------------
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app:  httpd-svc
+  name:  httpd-svc
+  namespace: httpd 
+spec:
+  type: LoadBalancer
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 80
+  selector:
+    app:  httpd-deployment
+
+
+
+
+
+
+
+
+
+nginx-deployment.yaml:
+----------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+  namespace: nginx
+spec:
+  selector:
+    matchLabels:
+      app: nginx-deployment
+  replicas: 2 
+  template:
+    metadata:
+      labels:
+        app: nginx-deployment
+    spec:
+      containers:
+      - name: nginx-deployment
+        image: 349948765351.dkr.ecr.ap-south-1.amazonaws.com/nginx
+        ports:
+        - containerPort: 80
+
+        
+
+nginx-service.yaml
+-------------------
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app:  nginx-svc
+  name:  nginx-svc
+  namespace: nginx
+spec:
+  type: LoadBalancer
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 80
+  selector:
+    app:  nginx-deployment
+
+
+
+
+
+
+tomcat-deployment.yaml
+----------------------
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tomcat-deployment
+  namespace: tomcat
+spec:
+  selector:
+    matchLabels:
+      app: tomcat-deployment
+  replicas: 2 
+  template:
+    metadata:
+      labels:
+        app: tomcat-deployment
+    spec:
+      containers:
+      - name: tomcat-deployment
+        image: 349948765351.dkr.ecr.ap-south-1.amazonaws.com/tomcat
+        ports:
+        - containerPort: 8080
+
+
+
+tomcat-ingress.yaml
+---------------------
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: tomcat-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /shoppingcart
+        backend:
+          serviceName: tomcat-svc
+          servicePort: 8080
+
+
+
+tomcat-service.yaml
+-------------------
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app:  tomcat-svc
+  name:  tomcat-svc
+  namespace: tomcat
+spec:
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 8080
+  selector:
+    app:  tomcat-deployment
